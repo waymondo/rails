@@ -128,6 +128,10 @@ module ActionCable
         message_buffer.append message
       end
 
+      def on_command_execution_exception(e) # :nodoc:
+        # allow access to exceptions thrown during command execution
+      end
+
       def on_error(message) # :nodoc:
         # ignore
       end

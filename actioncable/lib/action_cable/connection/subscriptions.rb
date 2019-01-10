@@ -19,7 +19,8 @@ module ActionCable
           logger.error "Received unrecognized command in #{data.inspect}"
         end
       rescue Exception => e
-        logger.error "Could not execute command from #{data.inspect}) [#{e.class} - #{e.message}]: #{e.backtrace.first(5).join(" | ")}"
+        @connection.on_command_execution_exception(e)
+        logger.error "Could not execute command from (#{data.inspect}) [#{e.class} - #{e.message}]: #{e.backtrace.first(5).join(" | ")}"
       end
 
       def add(data)

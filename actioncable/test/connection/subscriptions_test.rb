@@ -2,12 +2,23 @@ require 'test_helper'
 
 class ActionCable::Connection::SubscriptionsTest < ActionCable::TestCase
   class Connection < ActionCable::Connection::Base
-    attr_reader :websocket
+    attr_reader :websocket, :exceptions
+
+    def initialize(*)
+      super
+      @exceptions = []
+    end
 
     def send_async(method, *args)
       send method, *args
     end
+
+    def on_command_execution_exception(e)
+      @exceptions << e
+    end
   end
+
+  class ChatChannelError < Exception; end
 
   class ChatChannel < ActionCable::Channel::Base
     attr_reader :room, :lines
@@ -19,6 +30,10 @@ class ActionCable::Connection::SubscriptionsTest < ActionCable::TestCase
 
     def speak(data)
       @lines << data
+    end
+
+    def throw_exception(_data)
+      raise ChatChannelError.new("Uh Oh")
     end
   end
 
@@ -78,6 +93,19 @@ class ActionCable::Connection::SubscriptionsTest < ActionCable::TestCase
       @subscriptions.execute_command 'command' => 'message', 'identifier' => @chat_identifier, 'data' => ActiveSupport::JSON.encode(data)
 
       assert_equal [ data ], channel.lines
+    end
+  end
+
+  test "accessing exceptions thrown during command execution" do
+    run_in_eventmachine do
+      setup_connection
+      subscribe_to_chat_channel
+
+      data = { "content" => "Hello World!", "action" => "throw_exception" }
+      @subscriptions.execute_command "command" => "message", "identifier" => @chat_identifier, "data" => ActiveSupport::JSON.encode(data)
+
+      exception = @connection.exceptions.first
+      assert_kind_of ChatChannelError, exception
     end
   end
 
