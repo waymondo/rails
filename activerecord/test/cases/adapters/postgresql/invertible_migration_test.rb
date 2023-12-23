@@ -42,6 +42,13 @@ class PostgresqlInvertibleMigrationTest < ActiveRecord::PostgreSQLTestCase
     end
   end
 
+  class AddAndValidateCheckConstraintSymbolized < SilentMigration
+    def change
+      add_check_constraint :settings, "value >= 0", name: :positive_value, validate: false
+      validate_check_constraint :settings, name: :positive_value
+    end
+  end
+
   class AddAndValidateForeignKey < SilentMigration
     def change
       add_foreign_key :bars, :foos, validate: false
@@ -108,6 +115,17 @@ class PostgresqlInvertibleMigrationTest < ActiveRecord::PostgreSQLTestCase
     assert @connection.check_constraint_exists?(:settings, name: "positive_value")
     AddAndValidateCheckConstraint.new.migrate(:down)
     assert_not @connection.check_constraint_exists?(:settings, name: "positive_value")
+  end
+
+  def test_migrate_revert_add_and_validate_check_constraint_symbolized
+    @connection.create_table(:settings) do |t|
+      t.integer :value
+    end
+
+    AddAndValidateCheckConstraintSymbolized.new.migrate(:up)
+    assert @connection.check_constraint_exists?(:settings, name: :positive_value)
+    AddAndValidateCheckConstraintSymbolized.new.migrate(:down)
+    assert_not @connection.check_constraint_exists?(:settings, name: :positive_value)
   end
 
   def test_migrate_revert_add_and_validate_foreign_key
